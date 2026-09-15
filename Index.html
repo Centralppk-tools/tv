@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0b0d">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Мобильная PWA-хлопушка: сцена, кадр, дубль, таймкод и хлопки.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Хлопушка">
+<meta name="format-detection" content="telephone=no">
+<title>Кинохлопушка</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%230b0b0d'/%3E%3Cpath d='M72 120h368v72H72z' fill='%23ffd400'/%3E%3Cpath d='M72 120h92v72H72zm184 0h92v72h-92z' fill='%230b0b0d'/%3E%3Crect x='72' y='192' width='368' height='200' rx='24' fill='%2318181e' stroke='%23ffd400' stroke-width='14'/%3E%3Ctext x='256' y='326' font-family='Arial,sans-serif' font-size='112' font-weight='700' fill='%23ffd400' text-anchor='middle'%3ECLAP%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #09090b;
+  --surface: #121216;
+  --surface-2: #1b1b21;
+  --line: rgba(255, 255, 255, .09);
+  --line-strong: rgba(255, 212, 0, .35);
+  --text: #f6f4ee;
+  --muted: #9b9ba4;
+  --accent: #ffd400;
+  --accent-dark: #e2b800;
+  --green: #38e07b;
+  --red: #ff453a;
+  --radius: 18px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(255, 212, 0, .10), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+}
+button, input, select { font: inherit; color: inherit; }
+button {
+  touch-action: manipulation;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid rgba(255, 212, 0, .55);
+  outline-offset: 2px;
+}
+#app {
+  max-width: 860px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: calc(10px + var(--safe-top)) 12px calc(20px + var(--safe-bottom));
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo { font-size: 26px; line-height: 1; filter: drop-shadow(0 0 12px rgba(255, 212, 0, .35)); }
+.brand-text { min-width: 0; }
+.brand h1 { margin: 0; font-size: clamp(18px, 5vw, 24px); line-height: 1.1; letter-spacing: .02em; }
+.subline {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sep { margin: 0 5px; }
+.top-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; }
+.mini-btn {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mini-btn.danger { color: #ffb4ae; }
+.mini-btn:active { transform: translateY(1px); }
+.hidden { display: none !important; }
+
+.slate {
+  border-radius: 24px;
+  background: #0d0d10;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .35) inset;
+  overflow: hidden;
+}
+.lid-wrap {
+  position: relative;
+  height: clamp(64px, 14vw, 96px);
+  background: #141419;
+  border-bottom: 2px solid rgba(255, 212, 0, .35);
+}
+.clapper-lid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  transform: translateY(-8px);
+  transform-origin: 8% 100%;
+  background: repeating-linear-gradient(115deg, var(--accent) 0 30px, #111 30px 60px);
+  border-bottom: 4px solid #000;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .45);
+  transition: transform .09s ease;
+}
+.clapper-lid.hit { animation: clapHit .38s cubic-bezier(.22, .9, .25, 1); }
+@keyframes clapHit {
+  0% { transform: translateY(-12px); }
+  35% { transform: translateY(0); }
+  55% { transform: translateY(-5px); }
+  75% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+.slate.clapped { animation: boardTap .38s ease; }
+@keyframes boardTap {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-2px); }
+  70% { transform: translateX(2px); }
+}
+.slate-body { padding: 12px; }
+.board-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.board-field {
+  display: block;
+  min-width: 0;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 14px;
+  padding: 8px 5px 9px;
+}
+.field-label {
+  display: block;
+  color: var(--accent);
+  font-size: clamp(9px, 2.7vw, 12px);
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.counter {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 2px;
+}
+.counter input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #101014;
+  color: #fff;
+  text-align: center;
+  font-size: clamp(22px, 7vw, 38px);
+  font-weight: 900;
+  line-height: 1.15;
+  padding: 2px 0;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.counter input::-webkit-outer-spin-button,
+.counter input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.step-btn {
+  width: 34px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #24242b;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0;
+}
+.step-btn:active { background: #33333c; transform: translateY(1px); }
+.timecode-box { text-align: center; padding: 8px 0 4px; }
+.timecode {
+  font-size: clamp(38px, 12.5vw, 78px);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: .02em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 22px rgba(255, 212, 0, .22);
+  white-space: nowrap;
+}
+.timecode.running { color: var(--green); text-shadow: 0 0 24px rgba(56, 224, 123, .28); }
+.timecode-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.state-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .75;
+}
+.state-badge.running { color: var(--green); border-color: rgba(56, 224, 123, .35); background: rgba(56, 224, 123, .08); }
+.state-badge.paused { color: var(--accent); border-color: rgba(255, 212, 0, .35); background: rgba(255, 212, 0, .08); }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+.btn {
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 800;
+  font-size: clamp(14px, 4vw, 17px);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 0 8px;
+  transition: transform .06s ease, filter .12s ease, background .12s ease;
+}
+.btn:active { transform: translateY(1px); filter: brightness(.92); }
+.btn-start { background: linear-gradient(180deg, #45e386, #26a95f); border-color: rgba(69, 227, 134, .45); color: #031a0c; }
+.btn-start.pause { background: linear-gradient(180deg, #ffd44d, #f0b400); border-color: rgba(255, 212, 0, .45); color: #211a00; }
+.btn-reset { background: #24242b; }
+.btn-clap {
+  grid-column: 1 / -1;
+  min-height: 70px;
+  font-size: clamp(20px, 6vw, 28px);
+  background: linear-gradient(180deg, #ffe257, #f3b800);
+  border-color: rgba(255, 212, 0, .65);
+  color: #211a00;
+  box-shadow: 0 10px 28px rgba(255, 212, 0, .18);
+}
+.panel {
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+.setting-row, .switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+}
+.setting-row + .switch-row, .switch-row + .switch-row { border-top: 1px solid var(--line); }
+.setting-row label { font-size: 14px; font-weight: 700; color: var(--text); }
+select {
+  background: #24242b;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 138px;
+}
+.switch-row { cursor: pointer; }
+.switch-row span { display: flex; flex-direction: column; gap: 2px; }
+.switch-row strong { font-size: 14px; font-weight: 700; }
+.switch-row small { color: var(--muted); font-size: 11px; font-weight: 500; }
+.switch-row input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--accent); flex-shrink: 0; }
+
+.history { margin-top: 14px; }
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.history-head h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 800;
+}
+.history-actions { display: flex; gap: 6px; }
+.history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.history-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.history-item .idx { color: var(--accent); font-size: 12px; font-weight: 900; }
+.history-item .tc {
+  font-size: clamp(20px, 6.5vw, 30px);
+  font-weight: 900;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+.history-item .meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
+.history-item .htime { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  font-size: 13px;
+}
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + var(--safe-bottom));
+  transform: translate(-50%, 18px);
+  max-width: min(92vw, 520px);
+  background: rgba(24, 24, 28, .97);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease, transform .22s ease;
+  z-index: 50;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .5);
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (min-width: 560px) {
+  #app { padding-left: 18px; padding-right: 18px; }
+  .slate-body { padding: 16px; }
+  .board-fields { gap: 12px; }
+  .btn-clap { min-height: 82px; }
+}
+@media (max-width: 359px) {
+  .step-btn { width: 30px; height: 34px; font-size: 18px; }
+  .counter { grid-template-columns: 30px minmax(0, 1fr) 30px; }
+  .brand h1 { font-size: 17px; }
+  .mini-btn { padding: 7px 8px; font-size: 11px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .lid-wrap { height: 58px; }
+  .timecode { font-size: clamp(34px, 8vw, 56px); }
+  .btn { min-height: 46px; }
+  .btn-clap { min-height: 56px; }
+  .board-field { padding: 6px 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🎬</span>
+      <div class="brand-text">
+        <h1>Хлопушка</h1>
+        <p class="subline"><span id="dateLabel">—</span><span class="sep">·</span><span id="nowClock">--:--</span></p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="installBtn" class="mini-btn">Установить</button>
+      <button type="button" id="fsBtn" class="mini-btn hidden">Экран</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="slate" id="slate" aria-label="Кинохлопушка">
+      <div class="lid-wrap" aria-hidden="true">
+        <div class="clapper-lid" id="clapperLid"></div>
+      </div>
+
+      <div class="slate-body">
+        <div class="board-fields">
+          <div class="board-field">
+            <span class="field-label">Сцена</span>
+            <span class="counter">
+              <button type="button" class="step-btn" data-step="-1" data-target="scene" aria-label="Уменьшить номер сцены">−</button>
+              <input id="scene" type="number" min="0" max="9999" step="1" value="1" inputmode="numeric" aria-label="Номер сцены">
+              <button type="button" class="step-btn" data-step="1" data-target="scene" aria-label="Увеличить номер сцены">+</button>
+            </span>
+          </div>
+
+          <div class="board-field">
+            <span class="field-label">Кадр</span>
+            <span class="counter">
+              <button type="button" class="step-btn" data-step="-1" data-target="shot" aria-label="Уменьшить номер кадра">−</button>
+              <input id="shot" type="number" min="0" max="9999" step="1" value="1" inputmode="numeric" aria-label="Номер кадра">
+              <button type="button" class="step-btn" data-step="1" data-target="shot" aria-label="Увеличить номер кадра">+</button>
+            </span>
+          </div>
+
+          <div class="board-field">
+            <span class="field-label">Дубль</span>
+            <span class="counter">
+              <button type="button" class="step-btn" data-step="-1" data-target="take" aria-label="Уменьшить номер дубля">−</button>
+              <input id="take" type="number" min="0" max="9999" step="1" value="1" inputmode="numeric" aria-label="Номер дубля">
+              <button type="button" class="step-btn" data-step="1" data-target="take" aria-label="Увеличить номер дубля">+</button>
+            </span>
+          </div>
+        </div>
+
+        <div class="timecode-box">
+          <div id="timecode" class="timecode" aria-live="off">00:00:00:00</div>
+          <div class="timecode-meta">
+            <span id="tcState" class="state-badge">СТОП</span>
+            <span id="fpsLabel">24 fps</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button type="button" id="startBtn" class="btn btn-start">СТАРТ</button>
+          <button type="button" id="resetBtn" class="btn btn-reset">СБРОС</button>
+          <button type="button" id="clapBtn" class="btn btn-clap">ХЛОПОК</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Настройки">
+      <div class="setting-row">
+        <label for="fpsSelect">Частота кадров</label>
+        <select id="fpsSelect">
+          <option value="23.976">23,976</option>
+          <option value="24" selected>24</option>
+          <option value="25">25</option>
+          <option value="29.97">29,97</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+          <option value="60">60</option>
+        </select>
+      </div>
+
+      <label class="switch-row" for="autoTake">
+        <span>
+          <strong>Авто + дубль</strong>
+          <small>После хлопка дубль увеличивается</small>
+        </span>
+        <input type="checkbox" id="autoTake" checked>
+      </label>
+
+      <label class="switch-row" for="wakeLock">
+        <span>
+          <strong>Не гасить экран</strong>
+          <small>Пока приложение открыто</small>
+        </span>
+        <input type="checkbox" id="wakeLock" checked>
+      </label>
+    </section>
+
+    <section class="history" aria-label="История хлопков">
+      <div class="history-head">
+        <h2>Хлопки</h2>
+        <div class="history-actions">
+          <button type="button" id="copyBtn" class="mini-btn">Копировать</button>
+          <button type="button" id="clearBtn" class="mini-btn danger">Очистить</button>
+        </div>
+      </div>
+      <ol id="historyList" class="history-list">
+        <li class="empty">Пока нет хлопков</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+(() => {
+  const STORAGE_KEY = 'clapper-pwa-state-v1';
+  const MAX_HISTORY = 30;
+  const FPS_OPTIONS = [23.976, 24, 25, 29.97, 30, 50, 60];
+
+  const state = {
+    scene: 1,
+    shot: 1,
+    take: 1,
+    fps: 24,
+    autoTake: true,
+    wakeLock: true,
+    history: []
+  };
+
+  let running = false;
+  let elapsedBase = 0;
+  let startedAt = 0;
+  let rafId = null;
+  let clapTimer = null;
+  let toastTimer = null;
+  let audioCtx = null;
+  let deferredPrompt = null;
+  let wakeLockSentinel = null;
+
+  const els = {};
+  const $ = (id) => document.getElementById(id);
+
+  function clampInt(value, min, max, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(max, Math.max(min, parsed));
+  }
+
+  function init() {
+    cacheEls();
+    loadState();
+    syncFields();
+    bindEvents();
+    updateDate();
+    updateClock();
+    updateTC();
+    renderHistory();
+    setupInstall();
+    setupFullscreen();
+    setupWakeLock();
+    registerSW();
+    window.setInterval(updateDate, 60000);
+    window.setInterval(updateClock, 1000);
+    scheduleTC();
+  }
+
+  function cacheEls() {
+    els.slate = $('slate');
+    els.clapperLid = $('clapperLid');
+    els.scene = $('scene');
+    els.shot = $('shot');
+    els.take = $('take');
+    els.timecode = $('timecode');
+    els.tcState = $('tcState');
+    els.fpsLabel = $('fpsLabel');
+    els.startBtn = $('startBtn');
+    els.resetBtn = $('resetBtn');
+    els.clapBtn = $('clapBtn');
+    els.fpsSelect = $('fpsSelect');
+    els.autoTake = $('autoTake');
+    els.wakeLock = $('wakeLock');
+    els.historyList = $('historyList');
+    els.copyBtn = $('copyBtn');
+    els.clearBtn = $('clearBtn');
+    els.installBtn = $('installBtn');
+    els.fsBtn = $('fsBtn');
+    els.toast = $('toast');
+    els.dateLabel = $('dateLabel');
+    els.nowClock = $('nowClock');
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== 'object') return;
+
+      state.scene = clampInt(saved.scene, 0, 9999, 1);
+      state.shot = clampInt(saved.shot, 0, 9999, 1);
+      state.take = clampInt(saved.take, 0, 9999, 1);
+      const fps = Number(saved.fps);
+      state.fps = FPS_OPTIONS.includes(fps) ? fps : 24;
+      state.autoTake = saved.autoTake !== false;
+      state.wakeLock = saved.wakeLock !== false;
+
+      if (Array.isArray(saved.history)) {
+        state.history = saved.history
+          .filter((item) => item && typeof item === 'object')
+          .slice(-MAX_HISTORY)
+          .map((item) => ({
+            scene: clampInt(item.scene, 0, 9999, 0),
+            shot: clampInt(item.shot, 0, 9999, 0),
+            take: clampInt(item.take, 0, 9999, 0),
+            tc: typeof item.tc === 'string' ? item.tc : '00:00:00:00',
+            createdAt: Number.isFinite(Number(item.createdAt)) ? Number(item.createdAt) : Date.now()
+          }));
+      }
+    } catch (error) {
+      console.warn('Не удалось загрузить состояние', error);
+    }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (error) {
+      console.warn('Не удалось сохранить состояние', error);
+    }
+  }
+
+  function syncFields() {
+    els.scene.value = state.scene;
+    els.shot.value = state.shot;
+    els.take.value = state.take;
+    els.fpsSelect.value = String(state.fps);
+    els.autoTake.checked = state.autoTake;
+    els.wakeLock.checked = state.wakeLock;
+  }
+
+  function bindEvents() {
+    document.querySelectorAll('[data-step]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const key = button.dataset.target;
+        const input = els[key];
+        if (!input) return;
+        const step = Number(button.dataset.step) || 0;
+        const current = clampInt(input.value, 0, 9999, 0);
+        const next = clampInt(current + step, 0, 9999, 0);
+        input.value = next;
+        state[key] = next;
+        if ((key === 'scene' || key === 'shot') && state.take !== 1) {
+          state.take = 1;
+          els.take.value = 1;
+        }
+        saveState();
+      });
+    });
+
+    ['scene', 'shot', 'take'].forEach((key) => {
+      const input = els[key];
+      input.addEventListener('focus', () => input.select());
+      input.addEventListener('input', () => {
+        state[key] = clampInt(input.value, 0, 9999, 0);
+        if ((key === 'scene' || key === 'shot') && state.take !== 1) {
+          state.take = 1;
+          els.take.value = 1;
+        }
+        saveState();
+      });
+      input.addEventListener('blur', () => {
+        input.value = state[key];
+      });
+    });
+
+    els.startBtn.addEventListener('click', toggleTC);
+    els.resetBtn.addEventListener('click', resetTC);
+    els.clapBtn.addEventListener('click', triggerClap);
+
+    els.fpsSelect.addEventListener('change', () => {
+      state.fps = Number(els.fpsSelect.value) || 24;
+      saveState();
+      updateTC();
+      showToast('Частота кадров: ' + formatFps(state.fps));
+    });
+
+    els.autoTake.addEventListener('change', () => {
+      state.autoTake = els.autoTake.checked;
+      saveState();
+    });
+
+    els.wakeLock.addEventListener('change', () => {
+      state.wakeLock = els.wakeLock.checked;
+      saveState();
+      if (state.wakeLock) requestWakeLock();
+      else releaseWakeLock();
+    });
+
+    els.copyBtn.addEventListener('click', copyHistory);
+    els.clearBtn.addEventListener('click', clearHistory);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        updateTC();
+        if (state.wakeLock) requestWakeLock();
+      }
+    });
+
+    document.addEventListener('pointerdown', () => {
+      if (state.wakeLock) requestWakeLock();
+    }, { once: true });
+
+    window.addEventListener('pagehide', saveState);
+
+    document.addEventListener('keydown', (event) => {
+      const tag = event.target && event.target.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        triggerClap();
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        toggleTC();
+      }
+    });
+  }
+
+  function currentElapsedMs() {
+    return running ? elapsedBase + (Date.now() - startedAt) : elapsedBase;
+  }
+
+  function formatFps(fps) {
+    return String(fps).replace('.', ',');
+  }
+
+  function formatTC(ms) {
+    const fps = Number(state.fps) || 24;
+    const nominal = Math.max(1, Math.round(fps));
+    const totalFrames = Math.max(0, Math.floor(ms / 1000 * nominal));
+    const frames = totalFrames % nominal;
+    const totalSeconds = Math.floor(totalFrames / nominal);
+    const seconds = totalSeconds % 60;
+    const minutes = Math.floor(totalSeconds / 60) % 60;
+    const hours = Math.floor(totalSeconds / 3600) % 24;
+    return [hours, minutes, seconds, frames]
+      .map((value) => String(value).padStart(2, '0'))
+      .join(':');
+  }
+
+  function updateTC() {
+    if (!els.timecode) return;
+    els.timecode.textContent = formatTC(currentElapsedMs());
+    els.timecode.classList.toggle('running', running);
+    if (els.fpsLabel) els.fpsLabel.textContent = formatFps(state.fps) + ' fps';
+
+    const paused = !running && elapsedBase > 0;
+    els.tcState.textContent = running ? 'ИДЁТ' : (paused ? 'ПАУЗА' : 'СТОП');
+    els.tcState.classList.toggle('running', running);
+    els.tcState.classList.toggle('paused', paused);
+
+    els.startBtn.textContent = running ? 'ПАУЗА' : 'СТАРТ';
+    els.startBtn.classList.toggle('pause', running);
+  }
+
+  function scheduleTC() {
+    if (rafId !== null) return;
+    const tick = () => {
+      updateTC();
+      if (running) {
+        rafId = window.requestAnimationFrame(tick);
+      } else {
+        rafId = null;
+      }
+    };
+    rafId = window.requestAnimationFrame(tick);
+  }
+
+  function stopTC() {
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  function startTC() {
+    if (running) return;
+    running = true;
+    startedAt = Date.now();
+    updateTC();
+    scheduleTC();
+    showToast('Таймкод запущен');
+  }
+
+  function pauseTC() {
+    if (!running) return;
+    elapsedBase = currentElapsedMs();
+    running = false;
+    stopTC();
+    updateTC();
+    showToast('Таймкод на паузе');
+  }
+
+  function toggleTC() {
+    if (running) pauseTC();
+    else startTC();
+  }
+
+  function resetTC() {
+    running = false;
+    elapsedBase = 0;
+    startedAt = Date.now();
+    stopTC();
+    updateTC();
+    showToast('Таймкод сброшен');
+  }
+
+  function triggerClap() {
+    if (!running && elapsedBase === 0) startTC();
+
+    animateClap();
+    playClapSound();
+    if (navigator.vibrate) {
+      try { navigator.vibrate(80); } catch (error) {}
+    }
+
+    const entry = {
+      scene: state.scene,
+      shot: state.shot,
+      take: state.take,
+      tc: formatTC(currentElapsedMs()),
+      createdAt: Date.now()
+    };
+    state.history.push(entry);
+    if (state.history.length > MAX_HISTORY) state.history = state.history.slice(-MAX_HISTORY);
+
+    if (state.autoTake) {
+      state.take = clampInt(state.take + 1, 0, 9999, 0);
+      els.take.value = state.take;
+    }
+
+    saveState();
+    renderHistory();
+    showToast('Хлопок: С' + entry.scene + ' · К' + entry.shot + ' · Д' + entry.take + ' · ' + entry.tc);
+  }
+
+  function animateClap() {
+    if (!els.clapperLid) return;
+    els.clapperLid.classList.remove('hit');
+    void els.clapperLid.offsetWidth;
+    els.clapperLid.classList.add('hit');
+    els.slate.classList.add('clapped');
+    window.clearTimeout(clapTimer);
+    clapTimer = window.setTimeout(() => {
+      els.clapperLid.classList.remove('hit');
+      els.slate.classList.remove('clapped');
+    }, 420);
+  }
+
+  function playClapSound() {
+    try {
+      if (!audioCtx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        audioCtx = new AudioCtx();
+      }
+      if (audioCtx.state === 'suspended') {
+        const resumed = audioCtx.resume();
+        if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
+      }
+
+      const now = audioCtx.currentTime;
+      const duration = 0.12;
+      const buffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * duration), audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        const env = Math.pow(1 - i / data.length, 2.2);
+        data[i] = (Math.random() * 2 - 1) * env;
+      }
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+
+      const bandpass = audioCtx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.setValueAtTime(1800, now);
+      bandpass.frequency.exponentialRampToValueAtTime(700, now + duration);
+      bandpass.Q.value = 0.8;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.95, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      source.connect(bandpass);
+      bandpass.connect(gain);
+      gain.connect(audioCtx.destination);
+      source.start(now);
+      source.stop(now + duration + 0.02);
+
+      const click = audioCtx.createOscillator();
+      const clickGain = audioCtx.createGain();
+      click.type = 'square';
+      click.frequency.setValueAtTime(1700, now);
+      click.frequency.exponentialRampToValueAtTime(350, now + 0.035);
+      clickGain.gain.setValueAtTime(0.12, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      click.connect(clickGain);
+      clickGain.connect(audioCtx.destination);
+      click.start(now);
+      click.stop(now + 0.05);
+    } catch (error) {
+      console.warn('Звук хлопка недоступен', error);
+    }
+  }
+
+  function renderHistory() {
+    if (!els.historyList) return;
+    if (!state.history.length) {
+      els.historyList.innerHTML = '<li class="empty">Пока нет хлопков</li>';
+      return;
+    }
+    const total = state.history.length;
+    els.historyList.innerHTML = state.history
+      .slice()
+      .reverse()
+      .map((item, index) => {
+        const number = total - index;
+        const time = new Date(item.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        return '<li class="history-item">' +
+          '<span class="idx">#' + number + '</span>' +
+          '<div>' +
+            '<div class="tc">' + escapeHtml(item.tc) + '</div>' +
+            '<div class="meta">Сцена ' + item.scene + ' · Кадр ' + item.shot + ' · Дубль ' + item.take + '</div>' +
+          '</div>' +
+          '<time class="htime">' + time + '</time>' +
+        '</li>';
+      })
+      .join('');
+  }
+
+  function copyHistory() {
+    if (!state.history.length) {
+      showToast('История пуста');
+      return;
+    }
+
+    const header = 'Кинохлопушка — отчёт о дублях';
+    const lines = state.history.map((item, index) =>
+      '#' + (index + 1) + ' | TC ' + item.tc + ' | Сцена ' + item.scene + ' | Кадр ' + item.shot + ' | Дубль ' + item.take
+    );
+    const text = header + '\n' + lines.join('\n');
+    const done = () => showToast('Отчёт скопирован');
+    const fail = () => showToast('Не удалось скопировать');
+
+    const fallbackCopy = () => {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.style.position = 'fixed';
+      area.style.left = '-9999px';
+      document.body.appendChild(area);
+      area.select();
+      try { document.execCommand('copy'); done(); } catch (error) { fail(); }
+      area.remove();
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fallbackCopy);
+      return;
+    }
+
+    fallbackCopy();
+  }
+
+  function clearHistory() {
+    if (!state.history.length) {
+      showToast('История уже пуста');
+      return;
+    }
+    if (!window.confirm('Очистить историю хлопков?')) return;
+    state.history = [];
+    saveState();
+    renderHistory();
+    showToast('История очищена');
+  }
+
+  function setupInstall() {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (standalone || !els.installBtn) {
+      if (els.installBtn) els.installBtn.classList.add('hidden');
+      return;
+    }
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      deferredPrompt = event;
+      els.installBtn.classList.remove('hidden');
+    });
+
+    els.installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch (error) {}
+        deferredPrompt = null;
+        els.installBtn.classList.add('hidden');
+        return;
+      }
+      const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+      showToast(isIOS
+        ? 'Safari: «Поделиться» → «На экран Домой»'
+        : 'Меню браузера → «Установить приложение»', 4200);
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      els.installBtn.classList.add('hidden');
+      showToast('Приложение установлено');
+    });
+  }
+
+  function setupFullscreen() {
+    if (!els.fsBtn) return;
+    if (!document.fullscreenEnabled || !document.documentElement.requestFullscreen) {
+      els.fsBtn.classList.add('hidden');
+      return;
+    }
+    els.fsBtn.classList.remove('hidden');
+
+    els.fsBtn.addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (error) {
+        try {
+          if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+          else await document.exitFullscreen();
+        } catch (fallbackError) {
+          showToast('Полноэкранный режим недоступен');
+        }
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      els.fsBtn.textContent = document.fullscreenElement ? 'Свернуть' : 'Экран';
+    });
+  }
+
+  function setupWakeLock() {
+    if (!('wakeLock' in navigator)) {
+      if (els.wakeLock) {
+        els.wakeLock.checked = false;
+        state.wakeLock = false;
+        saveState();
+      }
+      return;
+    }
+    requestWakeLock();
+  }
+
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator) || !state.wakeLock) return;
+    if (document.visibilityState !== 'visible') return;
+    if (wakeLockSentinel) return;
+
+    try {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      wakeLockSentinel.addEventListener('release', () => {
+        wakeLockSentinel = null;
+      });
+    } catch (error) {
+      wakeLockSentinel = null;
+    }
+  }
+
+  function releaseWakeLock() {
+    if (!wakeLockSentinel) return;
+    try {
+      const released = wakeLockSentinel.release();
+      if (released && typeof released.catch === 'function') released.catch(() => {});
+    } catch (error) {}
+    wakeLockSentinel = null;
+  }
+
+  function registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    if (!/^https?:$/.test(window.location.protocol)) return;
+
+    const register = () => {
+      navigator.serviceWorker.register('./Sw.js').catch((error) => {
+        console.warn('Service worker не зарегистрирован', error);
+      });
+    };
+
+    if (document.readyState === 'complete') register();
+    else window.addEventListener('load', register);
+  }
+
+  function updateDate() {
+    if (!els.dateLabel) return;
+    const now = new Date();
+    els.dateLabel.textContent = now.toLocaleDateString('ru-RU', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'long'
+    }).replace(',', '');
+  }
+
+  function updateClock() {
+    if (!els.nowClock) return;
+    els.nowClock.textContent = new Date().toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function showToast(message, duration) {
+    if (!els.toast) return;
+    els.toast.textContent = message;
+    els.toast.classList.add('show');
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => {
+      els.toast.classList.remove('show');
+    }, duration || 2200);
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
